@@ -1,0 +1,4 @@
+import postgres from 'postgres';import fs from'node:fs/promises';
+if(!process.env.DATABASE_URL)throw new Error('Defina DATABASE_URL no ambiente seguro.');
+const sql=postgres(process.env.DATABASE_URL,{prepare:false,max:1,ssl:'require'});
+try{await sql.begin(async tx=>{await tx`SELECT pg_advisory_xact_lock(187325920)`;await tx.unsafe('CREATE SCHEMA IF NOT EXISTS prisma_checkout; REVOKE ALL ON SCHEMA prisma_checkout FROM PUBLIC; CREATE TABLE IF NOT EXISTS prisma_checkout.migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());');for(const name of(await fs.readdir('migrations')).filter(f=>f.endsWith('.sql')).sort()){const done=await tx`SELECT name FROM prisma_checkout.migrations WHERE name=${name}`;if(done.length)continue;await tx.unsafe(await fs.readFile('migrations/'+name,'utf8'));await tx`INSERT INTO prisma_checkout.migrations (name) VALUES (${name})`;console.log('Migração aplicada:',name);}});}finally{await sql.end();}

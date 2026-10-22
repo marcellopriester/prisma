@@ -1,0 +1,3 @@
+import{authClient,authConfig}from'@/lib/auth';import{body,json,error,fail,sameOrigin}from'@/lib/server';import{z}from'zod';
+const input=z.object({email:z.string().trim().email().max(200),password:z.string().min(1).max(200)});
+export async function POST(req:Request){try{sameOrigin(req);const b=input.parse(await body(req));const{admin}=authConfig();const client=await authClient();const{data,error:e}=await client.auth.signInWithPassword(b);if(e||!data.user)fail('Não foi possível entrar. Confira seu e-mail e sua senha.',401);if(data.user.id!==admin||!data.user.email_confirmed_at){await client.auth.signOut();fail('Esta conta não possui acesso administrativo.',403);}return json({ok:true});}catch(e){return error(e);}}

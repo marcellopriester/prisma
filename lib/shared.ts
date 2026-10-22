@@ -1,0 +1,6 @@
+export type Product = {id:string; kind:'product'|'bump'; name:string; description:string; price:number; slug:string; active:boolean; demo:boolean; image:string; delivery:string; button:string; productIds:string[]; position:number};
+export type Settings = {brand:string; color:string; logo:string; support:string; seller:string; terms:string; privacy:string; pixKey:string; pixType:string; recipient:string; city:string; enabled:boolean};
+export const defaults:Settings={brand:'Prisma',color:'#147d64',logo:'',support:'',seller:'',terms:'',privacy:'',pixKey:'',pixType:'email',recipient:'',city:'',enabled:false};
+export const money=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v/100);
+export const sample:Product={id:'demo',kind:'product',name:'Sua próxima grande ideia',description:'Uma oferta especial merece uma experiência de compra à altura.',price:9700,slug:'minha-oferta',active:true,demo:true,image:'',delivery:'',button:'Gerar Pix',productIds:[],position:0};
+export const sampleBump:Product={...sample,id:'demo-bump',kind:'bump',name:'Kit de recursos extras',description:'Complemente sua experiência com materiais práticos.',price:1970,slug:'recursos-extras'};

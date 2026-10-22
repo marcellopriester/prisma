@@ -1,0 +1,19 @@
+-- Execute uma vez no SQL Editor de um projeto Supabase novo.
+BEGIN;
+CREATE SCHEMA IF NOT EXISTS prisma_checkout;
+REVOKE ALL ON SCHEMA prisma_checkout FROM PUBLIC;
+CREATE TABLE prisma_checkout.stores (id text PRIMARY KEY, owner text NOT NULL UNIQUE, settings text NOT NULL, created text NOT NULL);
+CREATE TABLE prisma_checkout.products (id text PRIMARY KEY, store_id text NOT NULL REFERENCES prisma_checkout.stores(id), kind text NOT NULL, slug text NOT NULL, data text NOT NULL, created text NOT NULL);
+CREATE UNIQUE INDEX store_slug ON prisma_checkout.products(store_id,slug);
+CREATE TABLE prisma_checkout.orders (id text PRIMARY KEY, store_id text NOT NULL REFERENCES prisma_checkout.stores(id), token_hash text NOT NULL UNIQUE, fingerprint text NOT NULL, customer text NOT NULL, items text NOT NULL, total integer NOT NULL CHECK(total>0), payload text NOT NULL, recipient text NOT NULL, status text NOT NULL CHECK(status IN ('pending','review','paid')), created text NOT NULL, updated text NOT NULL, approved_by text, approved_at text);
+CREATE INDEX orders_store_created ON prisma_checkout.orders(store_id,created);
+CREATE TABLE prisma_checkout.audit (id text PRIMARY KEY, store_id text NOT NULL, actor text NOT NULL, action text NOT NULL, subject text NOT NULL, created text NOT NULL);
+ALTER TABLE prisma_checkout.stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prisma_checkout.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prisma_checkout.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prisma_checkout.audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON ALL TABLES IN SCHEMA prisma_checkout FROM PUBLIC;
+
+CREATE TABLE prisma_checkout.migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
+INSERT INTO prisma_checkout.migrations (name) VALUES ('001_schema.sql');
+COMMIT;
