@@ -119,3 +119,9 @@ Para aplicar migrações por terminal em vez do SQL Editor, use `npm run db:migr
 - Integração Git: https://vercel.com/docs/git/vercel-for-github
 - Supabase Auth: https://supabase.com/docs/guides/auth/server-side/creating-a-client
 - Conexão PostgreSQL: https://supabase.com/docs/guides/database/connecting-to-postgres
+
+## Verificação da sessão administrativa
+
+O painel só abre os cadastros depois de confirmar o acesso administrativo. O login verifica a sessão em uma segunda requisição; se a sessão expirar durante o preenchimento, permite entrar novamente em um diálogo, mantendo os campos na tela. A gravação deve ser reenviada pelo usuário depois de entrar. Falhas de autenticação e de gravação não são exibidas como sucesso. CPF/CNPJ formatados são normalizados antes da validação da chave Pix.
+
+Após `npm run build`, execute `npm run test:auth`. Esses testes usam o servidor Next.js e o SDK Supabase reais, com um serviço Auth local simulado, cobrindo cookies, renovação, logout e rejeição de outras contas. Não acessam credenciais ou registros de produção. `npm test` cobre as rotas de negócio com PostgreSQL isolado e identidade simulada. A validação com a conta real continua sendo necessária.

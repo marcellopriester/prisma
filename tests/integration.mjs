@@ -21,6 +21,11 @@ let bump={...product,kind:'bump',name:'Extra',price:1970,slug:'extra-teste',prod
 const settings={...defaults,pixKey:'test@example.test',recipient:'RECEBEDOR TESTE',city:'SAO PAULO',seller:'Loja Teste',support:'support@example.test',enabled:true};
 let bad=await call(admin,'POST',{action:'settings',settings:{...settings,pixKey:''}});check(bad.status===400,'Incomplete Pix cannot be activated');
 check((await call(admin,'POST',{action:'settings',settings})).status===200,'Complete Pix configuration saved');
+const formattedPix={...settings,pixType:'cnpj',pixKey:'12.345.678/0001-90'};
+check((await call(admin,'POST',{action:'settings',settings:formattedPix})).status===200,'Formatted CNPJ can be saved');
+check((await call(admin,'GET')).data.settings.pixKey==='12345678000190','CNPJ punctuation is removed without changing digits');
+check((await call(admin,'POST',{action:'settings',settings:{...formattedPix,pixKey:'12A345678000190'}})).status===400,'Invalid CNPJ characters are not silently removed');
+await call(admin,'POST',{action:'settings',settings});
 setUser(null);r=await call(catalog,'GET',null,`?store=${storeId}&slug=oferta-teste`);check(r.status===200&&r.data.bumps.length===1,'Public catalog loads eligible bump');check(!JSON.stringify(r.data).includes('ENTREGA PRIVADA'),'Delivery hidden in public catalog');
 const request={storeId,productId,bumpIds:[bumpId,bumpId],token:crypto.randomUUID()+crypto.randomUUID(),customer:{name:'Teste Cliente',email:'client@example.test',phone:'11999990000'},total:1};
 r=await call(orders,'POST',request);check(r.status===200,'Order created');const order=r.data;

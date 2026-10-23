@@ -12,7 +12,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node tests/integration.mjs",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "test:auth": "node tests/auth-http.mjs"
   },
   "dependencies": {
     "next": "16.4.2",
