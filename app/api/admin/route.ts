@@ -1,6 +1,7 @@
+import {adminError as error} from '@/lib/admin-error';
 import {and,eq,desc} from 'drizzle-orm';
 import {products,orders,stores,audit} from '@/db/schema';
-import {owner,json,error,sameOrigin,body,productSchema,settingsSchema,fail,log} from '@/lib/server';
+import {owner,json,sameOrigin,body,productSchema,settingsSchema,fail,log} from '@/lib/server';
 import {makePix} from '@/lib/pix';
 export async function GET(){try{const{db,store,user}=await owner();const ps=await db.select().from(products).where(eq(products.storeId,store.id));const os=await db.select().from(orders).where(eq(orders.storeId,store.id)).orderBy(desc(orders.created)).limit(500);return json({storeId:store.id,user:user.displayName,settings:JSON.parse(store.settings),products:ps.map(p=>({...JSON.parse(p.data),id:p.id})),orders:os.map(o=>({...o,tokenHash:undefined,fingerprint:undefined,payload:undefined,customer:JSON.parse(o.customer),items:JSON.parse(o.items)}))});}catch(e){return error(e);}}
 export async function POST(req:Request){try{sameOrigin(req);const{db,store,user}=await owner();const b=await body(req);

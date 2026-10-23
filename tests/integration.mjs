@@ -4,8 +4,8 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
 const dir=path.resolve('.test-runtime');await fs.mkdir(dir,{recursive:true});
-const modules={'lib/shared.ts':'shared.mjs','lib/pix.ts':'pix.mjs','lib/server.ts':'server.mjs','db/schema.ts':'schema.mjs','app/api/admin/route.ts':'admin.mjs','app/api/catalog/route.ts':'catalog.mjs','app/api/orders/route.ts':'orders.mjs'};
-const aliases={'@/lib/auth':'./identity.mjs','@/db/schema':'./schema.mjs','@/db':'./database.mjs','@/lib/server':'./server.mjs','@/lib/pix':'./pix.mjs','./shared':'./shared.mjs'};
+const modules={'lib/admin-error.ts':'admin-error.mjs','lib/shared.ts':'shared.mjs','lib/pix.ts':'pix.mjs','lib/server.ts':'server.mjs','db/schema.ts':'schema.mjs','app/api/admin/route.ts':'admin.mjs','app/api/catalog/route.ts':'catalog.mjs','app/api/orders/route.ts':'orders.mjs'};
+const aliases={'@/lib/admin-error':'./admin-error.mjs','./server':'./server.mjs','@/lib/auth':'./identity.mjs','@/db/schema':'./schema.mjs','@/db':'./database.mjs','@/lib/server':'./server.mjs','@/lib/pix':'./pix.mjs','./shared':'./shared.mjs'};
 for(const [src,dest]of Object.entries(modules)){let code=(await fs.readFile(src,'utf8'));for(const[a,b]of Object.entries(aliases))code=code.replaceAll(`'${a}'`,`'${b}'`);await fs.writeFile(path.join(dir,dest),ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText)}
 await fs.writeFile(path.join(dir,'identity.mjs'),`let current=null;export const setUser=u=>current=u;export const getAdminUser=async()=>current;`);
 await fs.writeFile(path.join(dir,'database.mjs'),`import{PGlite}from'@electric-sql/pglite';import{drizzle}from'drizzle-orm/pglite';import fs from'node:fs';import*as schema from'./schema.mjs';const client=new PGlite();for(const f of fs.readdirSync('migrations').filter(f=>f.endsWith('.sql')).sort())await client.exec(fs.readFileSync('migrations/'+f,'utf8'));const db=drizzle(client,{schema});export const getDb=()=>db;export const close=()=>client.close();`);
@@ -42,4 +42,15 @@ setUser(userA);check((await call(admin,'POST',{action:'approve',id:order.id,conf
 r=await call(orders,'GET',null,'?token='+request.token);check(r.data.status==='paid'&&r.data.items[0].delivery==='ENTREGA PRIVADA','Delivery available only after approval');
 await call(orders,'POST',{action:'reported',token:request.token});r=await call(orders,'GET',null,'?token='+request.token);check(r.data.status==='paid','Late report cannot downgrade paid order');
 r=await admin.POST(new Request('https://checkout.example.test/api/admin',{method:'POST',headers:{origin:'https://evil.example.test','content-type':'application/json'},body:JSON.stringify({action:'settings',settings})}));check(r.status===403,'Cross-origin write rejected');
+const{databaseDiagnostic,adminError}=await import(path.join(dir,'admin-error.mjs'));
+for(const[code,expected]of [['28P01','DB_AUTH'],['ENOTFOUND','DB_HOST'],['CONNECT_TIMEOUT','DB_CONNECTION'],['42P01','DB_SCHEMA'],['42501','DB_PERMISSION'],['SELF_SIGNED_CERT_IN_CHAIN','DB_TLS'],['ERR_INVALID_URL','SERVER_URL']]){
+ const source={name:'DrizzleQueryError',message:'SQL with PRIVATE_VALUE',cause:{code,message:'postgres://PRIVATE_VALUE'}};
+ const diagnosed=databaseDiagnostic(source);check(diagnosed?.code===expected,'Database diagnostic '+expected);
+ check(!JSON.stringify(diagnosed).includes('PRIVATE_VALUE'),'Diagnostic hides secrets '+expected);
+}
+check(databaseDiagnostic({cause:{message:'Tenant or user not found'}})?.code==='DB_POOLER','Pooler routing error is identified');
+check(adminError({name:'DrizzleQueryError',cause:{code:'23505'}}).status===409,'Duplicate slug retains conflict response');
+check(databaseDiagnostic(new Error('Unknown PRIVATE_VALUE'))===null,'Unknown error is not guessed');
+const diagnosticResponse=await adminError({cause:{code:'28P01',message:'PRIVATE_VALUE'}}).json();
+check(diagnosticResponse.error.includes('DB_AUTH')&&!diagnosticResponse.error.includes('PRIVATE_VALUE'),'Admin response contains safe diagnosis');
 await (await import(path.join(dir,'database.mjs'))).close();console.log(JSON.stringify({passed:checks,storage:'isolated PostgreSQL (PGlite)',bankTransactions:0}));
